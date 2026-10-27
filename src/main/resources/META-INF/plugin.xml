@@ -1,0 +1,46 @@
+<idea-plugin>
+    <id>io.github.livebg</id>
+    <name>Live Background</name>
+    <vendor>livebg</vendor>
+
+    <description><![CDATA[Plays a video file (mp4, webm, mov, gif and more) as the editor background,
+or rotates through the videos and images in a folder.<br>
+Frames are decoded by a local <code>ffmpeg</code> process and painted straight into the editor
+background, without writing frames to disk.<br><br>
+把视频当作编辑器背景播放，也可以选一个文件夹，里面的视频和图片轮着放。解码交给本机的 ffmpeg，帧只在内存里，不落盘。]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <!-- 菜单文字按 action / group 的 id 从这里取，见 messages/LiveBgBundle*.properties -->
+    <resource-bundle>messages.LiveBgBundle</resource-bundle>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <applicationConfigurable parentId="appearance"
+                                 id="io.github.livebg.settings"
+                                 instance="io.github.livebg.settings.LiveBgConfigurable"
+                                 displayName="Live Background"/>
+        <editorFactoryListener implementation="io.github.livebg.render.EditorHook"/>
+        <postStartupActivity implementation="io.github.livebg.LiveBgStartup"/>
+        <notificationGroup id="Live Background" displayType="BALLOON"/>
+    </extensions>
+
+    <actions>
+        <group id="LiveBg.Menu" popup="true">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <action id="LiveBg.ToggleEnabled" class="io.github.livebg.actions.ToggleEnabledAction"/>
+            <action id="LiveBg.TogglePause" class="io.github.livebg.actions.TogglePauseAction"/>
+            <action id="LiveBg.ChooseVideo" class="io.github.livebg.actions.ChooseVideoAction"/>
+            <action id="LiveBg.ChooseFolder" class="io.github.livebg.actions.ChooseFolderAction"/>
+            <!-- Mac 键位会把 control 换成 command：⌘⌥⇧. / ⌘⌥⇧, -->
+            <action id="LiveBg.NextBackground" class="io.github.livebg.actions.NextBackgroundAction">
+                <keyboard-shortcut keymap="$default" first-keystroke="control alt shift PERIOD"/>
+            </action>
+            <action id="LiveBg.PreviousBackground" class="io.github.livebg.actions.PreviousBackgroundAction">
+                <keyboard-shortcut keymap="$default" first-keystroke="control alt shift COMMA"/>
+            </action>
+            <action id="LiveBg.ShowStats" class="io.github.livebg.actions.ShowStatsAction"/>
+            <separator/>
+            <action id="LiveBg.OpenSettings" class="io.github.livebg.actions.OpenSettingsAction"/>
+        </group>
+    </actions>
+</idea-plugin>
