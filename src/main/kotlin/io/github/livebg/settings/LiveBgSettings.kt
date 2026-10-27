@@ -12,7 +12,7 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-enum class SourceKind { VIDEO, FOLDER }
+enum class SourceKind { VIDEO, FOLDER, WEB }
 
 enum class Scope(private val labelKey: String) {
     WINDOW("scope.window"),
@@ -59,6 +59,9 @@ class LiveBgSettings : PersistentStateComponent<LiveBgSettings.State> {
 
         /** 轮播到的那个，重启 IDE 后接着放 */
         var folderCurrent = ""
+
+        /** 网页壁纸：Wallpaper Engine 的 web 类壁纸文件夹（有 project.json），或者一个 html */
+        var webPath = ""
 
         var scope = Scope.WINDOW
 

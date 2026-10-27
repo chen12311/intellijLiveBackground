@@ -71,6 +71,31 @@ class FrameBuffersTest {
     }
 
     @Test
+    fun `offer never blocks and replaces a frame nobody showed yet`() {
+        val b = FrameBuffers(2, 2)
+        for (n in 1..10) {
+            val img = b.acquire()!!
+            img.mark(n)
+            assertTrue(b.offer(img))
+        }
+        // 没人显示时一直顶掉上一帧，显示的是最新那帧
+        assertEquals(10, b.swap()!!.markOf())
+        assertNull(b.swap())
+
+        // 正在显示的那块不会被拿去写
+        b.offer(b.acquire()!!)
+        val shown = b.swap()!!
+        repeat(5) {
+            val img = b.acquire()!!
+            assertNotSame(shown, img)
+            b.offer(img)
+        }
+
+        b.close()
+        assertFalse(b.offer(BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB)))
+    }
+
+    @Test
     fun `close wakes up a waiting producer and stops acquire`() {
         val b = FrameBuffers(2, 2)
         b.publish(b.acquire()!!)

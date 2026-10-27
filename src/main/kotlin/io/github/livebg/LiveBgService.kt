@@ -26,6 +26,11 @@ import io.github.livebg.render.SelectionProtection
 import io.github.livebg.settings.LiveBgSettings
 import io.github.livebg.settings.Scope
 import io.github.livebg.settings.SourceKind
+import io.github.livebg.web.JcefSupport
+import io.github.livebg.web.WebConfig
+import io.github.livebg.web.WebFrameSource
+import io.github.livebg.web.WebWallpaper
+import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
@@ -146,6 +151,7 @@ class LiveBgService : Disposable {
         val source = when (st.source) {
             SourceKind.VIDEO -> st.videoPath.ifBlank { message("status.source.noVideo") }
             SourceKind.FOLDER -> message("status.source.folder", st.folderPath.ifBlank { message("status.source.folder.none") })
+            SourceKind.WEB -> message("status.source.web", st.webPath.ifBlank { message("status.source.folder.none") })
         }
         return listOfNotNull(
             message("status.line", message(state), source),
@@ -174,6 +180,7 @@ class LiveBgService : Disposable {
             SourceKind.FOLDER -> listOf(
                 SourceKind.FOLDER, carousel.current.toString(), st.ffmpegPath, st.fps, st.blur, st.dim, st.decodeWidth, st.hwaccel,
             )
+            SourceKind.WEB -> listOf(SourceKind.WEB, st.webPath, st.fps, st.blur, st.dim, st.decodeWidth)
         }
     }
 
@@ -188,6 +195,10 @@ class LiveBgService : Disposable {
                 ffmpegSource(video) ?: return
             }
             SourceKind.FOLDER -> ffmpegSource(carousel.current ?: return fail(message("error.folderEmpty", st.folderPath))) ?: return
+            SourceKind.WEB -> {
+                if (st.webPath.isBlank()) return stopPlayback()
+                webSource(toPath(st.webPath) ?: return fail(message("error.web.missing", st.webPath))) ?: return
+            }
         }
         source.onError = { message ->
             ApplicationManager.getApplication().invokeLater {
@@ -209,6 +220,24 @@ class LiveBgService : Disposable {
         return FfmpegFrameSource(
             FfmpegConfig(ffmpeg, file, MediaFiles.isImage(file), st.fps, st.blur, st.dim, st.decodeWidth, st.hwaccel)
         )
+    }
+
+    /** 不能用内嵌浏览器、不是网页壁纸时报错，返回 null。 */
+    private fun webSource(path: Path): FrameSource? {
+        if (!JcefSupport.isAvailable()) {
+            fail(message("error.web.noJcef"))
+            return null
+        }
+        val wallpaper = try {
+            WebWallpaper.load(path)
+        } catch (e: IOException) {
+            fail(e.message ?: e.toString())
+            return null
+        }
+        val st = settings
+        // 原画对网页没有意义，按 1:1（1920 宽）出图
+        val width = if (st.decodeWidth > 0) st.decodeWidth else WebFrameSource.VIEW_WIDTH
+        return WebFrameSource(WebConfig(wallpaper, st.fps, st.blur, st.dim, width))
     }
 
     private fun onSourceError(error: String) {

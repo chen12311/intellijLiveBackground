@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <title>Live Background web demo</title>
+  <!--
+    测试用的网页壁纸，按 Wallpaper Engine 的格式写。左下角会显示插件那边的每一环是不是通的：
+    - 颜色：页面自己默认是蓝色，project.json 里的默认值是橙色。是橙色 = 插件把用户设置交给了页面
+    - 读本地文件：fetch('data.json') 成功 = 壁纸文件夹的文件能按网址读到
+    - 暂停：IDE 失去焦点时应该变成「是」，动画停住
+  -->
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #000; font-family: -apple-system, "PingFang SC", sans-serif; }
+    canvas { position: fixed; left: 0; top: 0; width: 100%; height: 100%; }
+    #clock { position: fixed; right: 72px; top: 40px; color: #fff; font-size: 140px; font-weight: 200; text-shadow: 0 4px 16px rgba(0,0,0,.5); }
+    #info { position: fixed; left: 56px; bottom: 48px; color: #fff; font-size: 30px; line-height: 1.55; text-shadow: 0 2px 10px #000; }
+    .ok { color: #7CFC9A; } .bad { color: #FF7B7B; }
+  </style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="clock"></div>
+<div id="info"></div>
+<script>
+  var state = { color: [0.2, 0.45, 0.95], speed: 40, clock: true, props: false, fetch: '…', paused: false, audio: 0 };
+
+  window.wallpaperPropertyListener = {
+    applyUserProperties: function (p) {
+      state.props = true;
+      if (p.schemecolor) state.color = p.schemecolor.value.split(' ').map(Number);
+      if (p.speed) state.speed = p.speed.value;
+      if (p.showclock) state.clock = p.showclock.value;
+    },
+    setPaused: function (p) { state.paused = p; }
+  };
+  if (window.wallpaperRegisterAudioListener) {
+    window.wallpaperRegisterAudioListener(function () { state.audio++; });
+  }
+
+  fetch('data.json')
+    .then(function (r) { return r.json(); })
+    .then(function (d) { state.fetch = d.message; })
+    .catch(function (e) { state.fetch = 'FAIL ' + e; });
+
+  var canvas = document.getElementById('c');
+  var ctx = canvas.getContext('2d');
+  var dots = [];
+  for (var i = 0; i < 160; i++) {
+    dots.push({ x: Math.random(), y: Math.random(), r: 2 + Math.random() * 6, a: Math.random() * Math.PI * 2, v: 0.3 + Math.random() });
+  }
+
+  var frames = 0, fps = 0, lastFpsAt = performance.now(), t = 0, last = performance.now();
+
+  function rgb(c, k) {
+    return 'rgb(' + Math.round(c[0] * 255 * k) + ',' + Math.round(c[1] * 255 * k) + ',' + Math.round(c[2] * 255 * k) + ')';
+  }
+
+  function line(label, value, good) {
+    return label + '：<span class="' + (good ? 'ok' : 'bad') + '">' + value + '</span>';
+  }
+
+  function draw(now) {
+    var dt = Math.min(now - last, 100) / 1000;
+    last = now;
+    t += dt * state.speed / 40;
+
+    var dpr = window.devicePixelRatio || 1;
+    var w = Math.round(innerWidth * dpr), h = Math.round(innerHeight * dpr);
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+
+    // 跟着时间转的渐变：看得出是不是在动、流不流畅
+    var cx = w / 2 + Math.cos(t * 0.6) * w * 0.3, cy = h / 2 + Math.sin(t * 0.8) * h * 0.3;
+    var g = ctx.createRadialGradient(cx, cy, 0, w / 2, h / 2, Math.max(w, h) * 0.8);
+    g.addColorStop(0, rgb(state.color, 1));
+    g.addColorStop(1, rgb(state.color, 0.12));
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    dots.forEach(function (d) {
+      d.a += dt * d.v * state.speed / 40;
+      var x = (d.x + Math.cos(d.a) * 0.05) * w, y = ((d.y + t * 0.02 * d.v) % 1) * h;
+      ctx.beginPath();
+      ctx.arc(x, y, d.r * dpr, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    frames++;
+    if (now - lastFpsAt >= 1000) { fps = Math.round(frames * 1000 / (now - lastFpsAt)); frames = 0; lastFpsAt = now; }
+
+    var d = new Date();
+    document.getElementById('clock').textContent = state.clock
+      ? String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0')
+      : '';
+    document.getElementById('info').innerHTML = [
+      line('收到 project.json 的设置', state.props ? '是（颜色应为橙色）' : '否（颜色是蓝色）', state.props),
+      line('读本地文件 data.json', state.fetch, state.fetch === 'OK'),
+      line('暂停', state.paused ? '是' : '否', true),
+      line('页面帧率', fps + ' fps', fps > 0),
+      line('视口', innerWidth + '×' + innerHeight + ' CSS px，devicePixelRatio ' + dpr.toFixed(2), true),
+      line('音频回调（静音）', state.audio + ' 次', state.audio > 0),
+    ].join('<br>');
+
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+</script>
+</body>
+</html>

@@ -42,6 +42,12 @@ abstract class FrameSource(private val name: String) {
         thread?.interrupt()
     }
 
+    /**
+     * 播放 / 暂停时在 EDT 上调用。ffmpeg 靠背压自己停（不读管道它就不解），不用管；
+     * 自己按节奏出帧的来源（网页壁纸）要在这里停下来。
+     */
+    open fun setActive(active: Boolean) {}
+
     protected abstract fun run()
 
     private companion object {

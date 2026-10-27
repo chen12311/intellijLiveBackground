@@ -57,6 +57,7 @@ class FramePlayer(private val onFrame: () -> Unit, private val hasViewers: () ->
 
     private fun updateTimer() {
         if (source != null && (running || awaitingFirstFrame)) timer.start() else timer.stop()
+        source?.setActive(running)
     }
 
     private fun tick() {

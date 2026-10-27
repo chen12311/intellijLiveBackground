@@ -68,6 +68,20 @@ class ChooseFolderAction : DumbAwareAction() {
     override fun getActionUpdateThread() = ActionUpdateThread.BGT
 }
 
+class ChooseWebWallpaperAction : DumbAwareAction() {
+    override fun actionPerformed(e: AnActionEvent) {
+        val descriptor = FileChooserDescriptorFactory.singleFileOrDir().withTitle(LiveBgBundle.message("chooser.web.title"))
+        FileChooser.chooseFile(descriptor, e.project, null) { file ->
+            settings.source = SourceKind.WEB
+            settings.webPath = file.path
+            settings.enabled = true
+            LiveBgService.getInstance().reload()
+        }
+    }
+
+    override fun getActionUpdateThread() = ActionUpdateThread.BGT
+}
+
 class NextBackgroundAction : DumbAwareAction() {
     override fun actionPerformed(e: AnActionEvent) = LiveBgService.getInstance().nextBackground()
 

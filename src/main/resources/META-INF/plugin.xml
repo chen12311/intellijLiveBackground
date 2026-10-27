@@ -10,6 +10,9 @@ background, without writing frames to disk.<br><br>
 把视频当作编辑器背景播放，也可以选一个文件夹，里面的视频和图片轮着放。解码交给本机的 ffmpeg，帧只在内存里，不落盘。]]></description>
 
     <depends>com.intellij.modules.platform</depends>
+    <!-- 网页壁纸用 IDE 自带的 Chromium（JCEF）。2026.2 起它是单独的内置插件，2025.1 里在平台核心里、没有这个 id，
+         所以写成可选依赖：两边都能装，2026.2 里也能看到它的类 -->
+    <depends optional="true" config-file="livebg-jcef.xml">com.intellij.modules.jcef</depends>
 
     <!-- 菜单文字按 action / group 的 id 从这里取，见 messages/LiveBgBundle*.properties -->
     <resource-bundle>messages.LiveBgBundle</resource-bundle>
@@ -31,6 +34,7 @@ background, without writing frames to disk.<br><br>
             <action id="LiveBg.TogglePause" class="io.github.livebg.actions.TogglePauseAction"/>
             <action id="LiveBg.ChooseVideo" class="io.github.livebg.actions.ChooseVideoAction"/>
             <action id="LiveBg.ChooseFolder" class="io.github.livebg.actions.ChooseFolderAction"/>
+            <action id="LiveBg.ChooseWebWallpaper" class="io.github.livebg.actions.ChooseWebWallpaperAction"/>
             <!-- Mac 键位会把 control 换成 command：⌘⌥⇧. / ⌘⌥⇧, -->
             <action id="LiveBg.NextBackground" class="io.github.livebg.actions.NextBackgroundAction">
                 <keyboard-shortcut keymap="$default" first-keystroke="control alt shift PERIOD"/>

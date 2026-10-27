@@ -61,6 +61,19 @@ export JAVA_HOME=/Applications/PhpStorm.app/Contents/jbr/Contents/Home   # 没�
 - 换的时候先留着上一个的画面，等下一个的第一帧解出来再换上，不会闪一下空白
 - 图片只让 ffmpeg 解一帧（同样会缩放、模糊、压暗），之后不占 CPU
 
+### 网页壁纸（实验）
+
+来源选「网页壁纸」，或者菜单里「选择网页壁纸…」，选 Wallpaper Engine 里类型是 web 的壁纸文件夹（有 `project.json`），
+也可以直接选一个 html。用 IDE 自带的 Chromium（JCEF）在后台渲染，不用 ffmpeg。
+
+- 页面按 1920×1080 的 CSS 像素排版，输出宽度用「解码分辨率」（1280 → 1280×720；原画按 1920）
+- `project.json` 里用户设置的默认值会在页面加载完后交给壁纸（`applyUserProperties`），帧率交给 `applyGeneralProperties`
+- 模糊、压暗用页面最上面一层 `backdrop-filter` 做；壁纸里的视频、音频一律静音
+- 暂停（失去焦点、省电）时浏览器帧率降到 1，并调壁纸的 `setPaused(true)`
+- 做不到的：音频可视化不会动（拿不到系统声音，只喂静音）；跟鼠标互动的效果没反应；读正在播放的歌、随机挑文件这些接口是空的
+- 页面的报错、找不到的文件写在 idea.log 里（搜「网页壁纸」）
+- 测试用的壁纸在 `samples/web-wallpaper-demo/`，左下角会显示每一环通没通
+
 ## P0 验证清单
 
 装好后先选一个视频（工具 → Live Background → 选择视频…），打开任意项目和文件，整个窗口（编辑器、项目树、工具栏、状态栏）背景上应该在播这个视频。
@@ -93,6 +106,20 @@ export JAVA_HOME=/Applications/PhpStorm.app/Contents/jbr/Contents/Home   # 没�
 
 Wallpaper Engine 的视频类壁纸在 Windows 的 `Steam\steamapps\workshop\content\431960\<ID>\` 里，拷 `.mp4` 过来就能用。
 
+网页壁纸要实测的（先用 `samples/web-wallpaper-demo`，再拿两三个真壁纸：时钟、Canvas 粒子、WebGL 各一个，整个文件夹拷过来）：
+
+| 要看的 | 怎么看 | 合格线 |
+|---|---|---|
+| 能出画面 | 选 `samples/web-wallpaper-demo` | 有画面、在动；没画面看 idea.log 里有没有「网页壁纸」的报错 |
+| 设置传进去了 | demo 左下角第一行 | 「是」，颜色是橙色（蓝色说明没传进去） |
+| 读得到壁纸里的文件 | demo 左下角第二行 | OK |
+| 输出尺寸 | demo 的「视口」一行 + 性能统计里的帧尺寸 | 1920×1080 CSS px；解码分辨率 1280 时 devicePixelRatio 0.67、帧 1280×720 |
+| CPU | 活动监视器里 PhpStorm + 「jcef Helper (Renderer)」「jcef Helper (GPU)」 | 闲着不动时合计和放视频差不多；WebGL 壁纸记下实际数字 |
+| 流畅 | 看 demo 的渐变和粒子 | 肉眼不卡；性能统计实际帧率接近目标 |
+| 失去焦点暂停 | 切到别的应用再切回来 | 画面停住；回来后 demo 的「暂停」变回「否」 |
+| 换回视频 | 来源改回视频文件 | 正常放视频，活动监视器里 jcef Helper 的 CPU 降下去 |
+| 不是网页壁纸 | 选一个视频类壁纸的文件夹 | 提示「这是 video 类型的壁纸」 |
+
 ## 代码结构
 
 ```
@@ -119,6 +146,11 @@ src/main/kotlin/io/github/livebg/
 │  ├─ IdePainterSlots.kt   把画笔挂进窗口自带的背景画笔组（空编辑器区、Islands 圆角）
 │  ├─ EditorHook.kt        编辑器创建 / 释放
 │  └─ SelectionProtection.kt  坑 3：1×1 透明图
+├─ web/                    网页壁纸
+│  ├─ WebWallpaper.kt      读 project.json：入口网页、用户设置默认值；网址 ↔ 壁纸文件夹里的文件（不许 ../ 跑出去）
+│  ├─ WebShim.kt           往入口网页 <head> 里插 Wallpaper Engine 接口的模拟（resources/web/livebg-shim.js）
+│  ├─ WallpaperRequestHandler.kt  拦下 http://wallpaper.livebg/ 的请求，从文件夹里读文件返回
+│  └─ WebFrameSource.kt    JCEF 离屏渲染 → onPaint 拷进三缓冲（不等，顶掉没显示的帧）；暂停时帧率降到 1
 ├─ settings/               设置项和设置页
 └─ actions/                菜单动作
 ```
@@ -163,6 +195,17 @@ src/main/kotlin/io/github/livebg/
   同样的半径，分辨率越高看起来越不糊。
 - **输出尺寸和视频一样时不加 `scale`**（原画、或视频本身比上限小），省一次缩放。
 
+- **网页壁纸用 IDE 自带的 JCEF 离屏渲染，自己接 onPaint。** `JBCefBrowserBuilder.setOSRHandlerFactory` 换成我们的 `CefRenderHandler`，
+  视口固定 1920×1080、按输出宽度设 device scale factor；平台只把 `createComponent` 的结果强转成它自己的组件，不碰我们的 handler。
+  2025.1.7 和 2026.2 这几个接口一模一样，都不是内部 / 实验性 API；两边默认都开着离屏渲染和 GPU。
+  - onPaint 在浏览器的线程上，不能像 ffmpeg 那样卡在三缓冲上等，所以加了不等的 `FrameBuffers.offer`：上一帧没显示就顶掉。
+  - 页面从假网址 `http://wallpaper.livebg/` 加载、请求拦下来读文件（`file://` 下页面 fetch 自己的文件会被拦）。
+    文件处理继承 `CefResourceHandlerAdapter` 而不是直接实现接口：2026.2 的接口多了 `open / read / skip` 三个抽象方法，
+    Adapter 的默认实现会退回老的 `processRequest / readResponse`。
+  - 2026.2 起 JCEF 是单独的内置插件（`com.intellij.modules.jcef`），2025.1 里在核心、没有这个 id，所以 plugin.xml 里写成可选依赖。
+    `verifyPlugin` 去掉这一行也报 Compatible，分辨不出运行时是否真需要，先保留（两边都无害）。
+  - 插件被禁用时一加载 `WebFrameSource` 就找不到类，所以「能不能用」的判断单独放在 `JcefSupport` 里。
+
 ## 已验证
 
 - 编译基线 PhpStorm 2025.1.7，单元测试 35 个通过（视频信息解析、解码尺寸（含原画）、铺满计算、三缓冲的顺序 / 背压 / 关闭、
@@ -172,7 +215,11 @@ src/main/kotlin/io/github/livebg/
   原画尺寸不变、红蓝通道没有串；没装 ffmpeg 就跳过这三个
 - `verifyPlugin`：2025.1.7（PS-251）和 2026.2.3（PS-262）都是 Compatible，只有 1 处实验性 API（就是上面那个接口），
   没有内部 API；可以不重启启用 / 禁用
-- **没验证的**：在 IDE 里的实际画面效果、性能、轮播的实际表现——这些就是上面两张清单要你实测的；英文界面在设置页里的排版（英文比中文长）
+- 网页壁纸（分支 `feature/web-wallpaper`）：单元测试再加 11 个（读 project.json、各种不是网页壁纸的情况、网址 ↔ 文件含 `../` 越界、
+  插脚本的位置和原编码保留、配置转义、`offer` 不等），共 46 个通过；`verifyPlugin` 两个版本仍是 Compatible，没有新增实验性 / 内部 API。
+  插进去的脚本和 demo 页面在普通 Chromium 里跑过：设置传进去、读本地文件、静音回调、暂停 / 继续、静音、模糊压暗层都正常
+- **没验证的**：在 IDE 里的实际画面效果、性能、轮播的实际表现——这些就是上面几张清单要你实测的；英文界面在设置页里的排版（英文比中文长）；
+  网页壁纸在 JCEF 离屏模式下真的出帧、device scale 小于 1 时的尺寸、CPU 占用
 
 ## 接下来（P2 / P3）
 

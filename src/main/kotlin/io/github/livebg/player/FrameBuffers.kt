@@ -33,6 +33,16 @@ class FrameBuffers(val width: Int, val height: Int) {
         true
     }
 
+    /**
+     * 不等：上一帧还没显示就直接顶掉它，被顶掉的那块下次 [acquire] 接着用。返回 false 表示已关闭。
+     * 给自己按节奏出帧、不能卡住的来源用（网页壁纸在浏览器的线程上交帧）。
+     */
+    fun offer(image: BufferedImage): Boolean = lock.withLock {
+        if (closed) return false
+        ready = images.indexOf(image)
+        true
+    }
+
     /** EDT：有新帧就切换过去，返回新的当前帧；没有就返回 null。 */
     fun swap(): BufferedImage? = lock.withLock {
         if (ready == -1) return null

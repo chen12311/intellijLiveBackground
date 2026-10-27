@@ -60,6 +60,19 @@ class LiveBgConfigurable : BoundConfigurable("Live Background") {
                         comment(message("settings.folder.comment", nextShortcut()))
                     }
                 }
+                row {
+                    radioButton(message("settings.source.web"), SourceKind.WEB)
+                }
+                indent {
+                    row {
+                        textFieldWithBrowseButton(
+                            FileChooserDescriptorFactory.singleFileOrDir().withTitle(message("chooser.web.title"))
+                        ).bindText(st::webPath).align(AlignX.FILL)
+                    }
+                    row {
+                        comment(message("settings.source.web.comment"))
+                    }
+                }
             }.bind(st::source)
 
             group(message("settings.display")) {

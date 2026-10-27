@@ -1,0 +1,2 @@
+<!-- 可选依赖 com.intellij.modules.jcef 要求有个配置文件；这里不用登记什么，见 plugin.xml -->
+<idea-plugin/>
