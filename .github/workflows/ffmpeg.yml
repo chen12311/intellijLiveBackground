@@ -16,16 +16,20 @@ permissions:
 
 jobs:
   build:
+    name: build ${{ join(matrix.targets, ' + ') }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { target: macos-arm64, os: macos-15 }
-          - { target: macos-x64, os: macos-15 }
-          - { target: linux-x64, os: ubuntu-24.04, image: 'alpine:3.22' }
-          - { target: linux-arm64, os: ubuntu-24.04-arm, image: 'alpine:3.22' }
-          - { target: windows-x64, os: ubuntu-24.04, image: 'debian:trixie' }
+          # x64 是在 Apple 芯片上交叉编译的，和 arm64 用同一台 mac：GitHub 的 mac 机器紧张，
+          # 分成两个 job 时第二台常常一直分不到，15 分钟后被取消
+          - { targets: [macos-arm64, macos-x64], os: macos-15 }
+          - { targets: [linux-x64], os: ubuntu-24.04, image: 'alpine:3.22' }
+          - { targets: [linux-arm64], os: ubuntu-24.04-arm, image: 'alpine:3.22' }
+          - { targets: [windows-x64], os: ubuntu-24.04, image: 'debian:trixie' }
     runs-on: ${{ matrix.os }}
+    env:
+      TARGETS: ${{ join(matrix.targets, ' ') }}
     steps:
       - uses: actions/checkout@v4
 
@@ -33,28 +37,31 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           brew install nasm meson ninja pkgconf
-          ffmpeg/build.sh ${{ matrix.target }} out
+          for t in $TARGETS; do ffmpeg/build.sh "$t" out; done
 
       - name: Build (container)
         if: matrix.image
         run: |
-          docker run --rm -v "$PWD:/w" -w /w ${{ matrix.image }} \
-            sh -c 'sh ffmpeg/install-deps.sh && bash ffmpeg/build.sh ${{ matrix.target }} out'
+          docker run --rm -v "$PWD:/w" -w /w -e TARGETS ${{ matrix.image }} \
+            sh -ec 'sh ffmpeg/install-deps.sh; for t in $TARGETS; do bash ffmpeg/build.sh "$t" out; done'
 
       # 能在这台机器上跑的就试跑一遍（macos-x64 要 Rosetta，windows-x64 是交叉编译，跳过）
       - name: Smoke test
-        if: matrix.target == 'macos-arm64' || matrix.target == 'linux-x64' || matrix.target == 'linux-arm64'
         run: |
-          mkdir smoke && cd smoke && unzip -q ../out/ffmpeg-${{ matrix.target }}.zip
-          ./ffmpeg -hide_banner -version
-          ./ffmpeg -hide_banner -filters | grep -q ' lutyuv '
-          ./ffmpeg -hide_banner -decoders | grep -q ' libdav1d '
-          if [ "$RUNNER_OS" = Linux ]; then file ffmpeg | grep -q 'statically linked'; fi
+          for t in $TARGETS; do
+            case $t in macos-x64 | windows-x64) continue ;; esac
+            rm -rf smoke && mkdir smoke && cd smoke && unzip -q "../out/ffmpeg-$t.zip"
+            ./ffmpeg -hide_banner -version
+            ./ffmpeg -hide_banner -filters | grep -q ' lutyuv '
+            ./ffmpeg -hide_banner -decoders | grep -q ' libdav1d '
+            if [ "$RUNNER_OS" = Linux ]; then file ffmpeg | grep -q 'statically linked'; fi
+            cd ..
+          done
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ffmpeg-${{ matrix.target }}
-          path: out/ffmpeg-${{ matrix.target }}.zip
+          name: ffmpeg-${{ join(matrix.targets, '+') }}
+          path: out/ffmpeg-*.zip
           if-no-files-found: error
 
   release:
