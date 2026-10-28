@@ -1,6 +1,7 @@
 package io.github.livebg
 
 import com.intellij.ide.PowerSaveMode
+import com.intellij.notification.NotificationAction
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationActivationListener
 import com.intellij.openapi.application.ApplicationManager
@@ -11,10 +12,12 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.project.ProjectManagerListener
+import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.wm.IdeFrame
 import io.github.livebg.LiveBgBundle.message
 import io.github.livebg.player.Carousel
 import io.github.livebg.player.FfmpegConfig
+import io.github.livebg.player.FfmpegDownload
 import io.github.livebg.player.FfmpegFrameSource
 import io.github.livebg.player.FfmpegLocator
 import io.github.livebg.player.FramePlayer
@@ -209,12 +212,20 @@ class LiveBgService : Disposable {
         player.start(source, st.fps)
     }
 
-    /** 找不到 ffmpeg 时报错，返回 null。 */
+    /** 找不到 ffmpeg 时报错，返回 null。没自己指定路径、又有能下载的版本时，提示里带「下载」按钮。 */
     private fun ffmpegSource(file: Path): FrameSource? {
         val st = settings
         val ffmpeg = FfmpegLocator.find(st.ffmpegPath)
         if (ffmpeg == null) {
-            fail(message("error.ffmpegNotFound"))
+            val asset = FfmpegDownload.asset
+            when {
+                st.ffmpegPath.isNotBlank() || asset == null -> fail(message("error.ffmpegNotFound"))
+                FfmpegDownload.isRunning -> stopPlayback() // 下好了会自己 reload
+                else -> fail(
+                    message("error.ffmpegDownload", StringUtil.formatFileSize(asset.size)),
+                    downloadFfmpegAction(message("notification.downloadFfmpeg")),
+                )
+            }
             return null
         }
         return FfmpegFrameSource(
@@ -270,9 +281,20 @@ class LiveBgService : Disposable {
         return message("status.carousel", "${carousel.position}", "${carousel.size}", "${carousel.current?.fileName}", next, skipped)
     }
 
-    private fun fail(message: String) {
+    private fun fail(message: String, vararg actions: NotificationAction) {
         stopPlayback()
-        Notifier.warn(message)
+        Notifier.warn(message, *actions)
+    }
+
+    /**
+     * 后台下载 ffmpeg，下好了接着放；失败了提示里带「重试」。
+     * 失败时不 fail()：下载期间可能已经换成了网页壁纸，不能把它停掉。
+     */
+    private fun downloadFfmpegAction(text: String): NotificationAction = NotificationAction.createSimpleExpiring(text) {
+        FfmpegDownload.downloadInBackground(
+            onDone = { reload() },
+            onError = { Notifier.warn(message("error.ffmpegDownloadFailed", it), downloadFfmpegAction(message("notification.retry"))) },
+        )
     }
 
     private fun stopPlayback() {

@@ -98,7 +98,7 @@ class FfmpegFrameSource(private val cfg: FfmpegConfig) : FrameSource("ffmpeg") {
             if (size != src) add("scale=${size.width}:${size.height}:flags=bilinear")
             // 和 boxblur=半径:1 一样的方框模糊（两者 PSNR 53 dB），但更省：4K 下 ffmpeg 从约 0.8 核降到 0.5 核
             if (cfg.blur > 0) add("avgblur=sizeX=${cfg.blur}")
-            if (cfg.dimPercent > 0) add(String.format(Locale.ROOT, "eq=brightness=%.3f", -cfg.dimPercent / 100.0))
+            if (cfg.dimPercent > 0) add(dimFilter(1 - cfg.dimPercent / 100.0))
         }.joinToString(",")
 
         return buildList {
@@ -117,6 +117,18 @@ class FfmpegFrameSource(private val cfg: FfmpegConfig) : FrameSource("ffmpeg") {
     private companion object {
         /** 每次从管道读多少像素（×4 字节 = 1 MB）。 */
         const val CHUNK_PIXELS = 1 shl 18
+
+        /**
+         * RGB 乘以 [k]，和网页壁纸的 CSS brightness() 一样。在 YUV 上做：黑点和灰点不动，离它们的距离乘 k，
+         * 换算回 RGB 正好是乘 k；minval / maxval 按位深和 limited / full range 取值，10 bit、jpg 都对。
+         * 不用 eq：它要 --enable-gpl，插件下载的 LGPL 版 ffmpeg 里没有。lutrgb 结果一样（PSNR 48 dB），
+         * 但要先转成 RGB，4K 下 CPU 翻倍；这个和 eq 一样省。
+         */
+        fun dimFilter(k: Double): String {
+            val mid = "(minval+maxval)/2"
+            val chroma = String.format(Locale.ROOT, "$mid+(val-$mid)*%.3f", k)
+            return String.format(Locale.ROOT, "lutyuv=y=minval+(val-minval)*%.3f:u=%s:v=%s", k, chroma, chroma)
+        }
     }
 
     /** 一直读 stderr，免得缓冲区写满把 ffmpeg 卡住；留最后几行用来报错。 */

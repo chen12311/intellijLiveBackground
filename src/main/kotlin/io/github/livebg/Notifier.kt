@@ -10,8 +10,10 @@ import io.github.livebg.settings.LiveBgConfigurable
 
 object Notifier {
 
-    fun warn(message: String) {
+    /** [actions] 排在「打开设置」前面。 */
+    fun warn(message: String, vararg actions: NotificationAction) {
         group().createNotification("Live Background", toHtml(message), NotificationType.WARNING)
+            .apply { actions.forEach { addAction(it) } }
             .addAction(NotificationAction.createSimpleExpiring(LiveBgBundle.message("notification.openSettings")) {
                 ShowSettingsUtil.getInstance().showSettingsDialog(null, LiveBgConfigurable::class.java)
             })

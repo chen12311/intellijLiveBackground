@@ -4,7 +4,9 @@ import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.keymap.KeymapUtil
 import com.intellij.openapi.options.BoundConfigurable
 import com.intellij.openapi.ui.DialogPanel
+import com.intellij.openapi.util.text.StringUtil
 import com.intellij.ui.dsl.builder.AlignX
+import com.intellij.ui.dsl.builder.Cell
 import com.intellij.ui.dsl.builder.bind
 import com.intellij.ui.dsl.builder.bindIntValue
 import com.intellij.ui.dsl.builder.bindItem
@@ -14,7 +16,12 @@ import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import io.github.livebg.LiveBgBundle.message
 import io.github.livebg.LiveBgService
+import io.github.livebg.player.FfmpegDownload
 import io.github.livebg.player.FfmpegLocator
+import java.io.IOException
+import java.nio.file.Path
+import javax.swing.JButton
+import javax.swing.JEditorPane
 
 class LiveBgConfigurable : BoundConfigurable("Live Background") {
 
@@ -124,8 +131,26 @@ class LiveBgConfigurable : BoundConfigurable("Live Background") {
                         FileChooserDescriptorFactory.singleFile().withTitle(message("chooser.ffmpeg.title"))
                     ).bindText(st::ffmpegPath).align(AlignX.FILL)
                 }
+                val found = FfmpegLocator.find(st.ffmpegPath)
+                lateinit var status: Cell<JEditorPane>
                 row {
-                    comment(ffmpegStatus(st.ffmpegPath))
+                    status = comment(ffmpegStatus(st.ffmpegPath, found))
+                }
+                // 自己填了路径就不推荐下载：填的路径优先，下了也用不上
+                FfmpegDownload.asset?.takeIf { found == null && st.ffmpegPath.isBlank() }?.let { asset ->
+                    row {
+                        button(message("settings.ffmpeg.download", StringUtil.formatFileSize(asset.size))) { e ->
+                            val exe = try {
+                                FfmpegDownload.downloadWithProgress() ?: return@button // 取消了
+                            } catch (ex: IOException) {
+                                status.component.text = message("error.ffmpegDownloadFailed", ex.message ?: ex.toString())
+                                return@button
+                            }
+                            status.component.text = message("settings.ffmpeg.found", exe)
+                            (e.source as JButton).isEnabled = false
+                            LiveBgService.getInstance().reload() // 没改别的设置时点「确定」不会 apply
+                        }.comment(message("settings.ffmpeg.download.comment"))
+                    }
                 }
                 row {
                     checkBox(message("settings.hwaccel")).bindSelected(st::hwaccel)
@@ -145,13 +170,10 @@ class LiveBgConfigurable : BoundConfigurable("Live Background") {
         return if (shortcut.isEmpty()) "" else message("settings.folder.comment.shortcut", shortcut)
     }
 
-    private fun ffmpegStatus(configured: String): String {
-        val found = FfmpegLocator.find(configured)
-        return when {
-            found != null -> message("settings.ffmpeg.found", found)
-            configured.isNotBlank() -> message("settings.ffmpeg.notExecutable", configured)
-            else -> message("settings.ffmpeg.notFound")
-        }
+    private fun ffmpegStatus(configured: String, found: Path?): String = when {
+        found != null -> message("settings.ffmpeg.found", found)
+        configured.isNotBlank() -> message("settings.ffmpeg.notExecutable", configured)
+        else -> message("settings.ffmpeg.notFound")
     }
 
     private fun decodeSizeName(width: Int): String {

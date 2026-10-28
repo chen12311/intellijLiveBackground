@@ -6,3 +6,4 @@
 
 # Binary files should be left untouched
 *.jar           binary
+*.sh            text eol=lf

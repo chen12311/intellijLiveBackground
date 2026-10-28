@@ -1,0 +1,110 @@
+# 编译插件自动下载用的精简版 ffmpeg（ffmpeg/build.sh），发到 GitHub Release。
+# 发布：推一个 ffmpeg-<ffmpeg 版本>-<第几次编译> 的标签，比如 ffmpeg-9.0.2-1，版本号要和 build.sh 里的一致。
+# 发布后运行 ffmpeg/update-manifest.sh <标签>，把地址和校验值拷进插件，提交后随插件发布。
+# 改了 ffmpeg/ 或这个文件的推送、手动运行（workflow_dispatch），只编译、上传构建产物，不发布。
+name: ffmpeg
+
+on:
+  push:
+    tags: ['ffmpeg-*']
+    branches: ['**']
+    paths: ['ffmpeg/**', '.github/workflows/ffmpeg.yml'] # 推标签时不看路径
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: macos-arm64, os: macos-15 }
+          - { target: macos-x64, os: macos-15 }
+          - { target: linux-x64, os: ubuntu-24.04, image: 'alpine:3.22' }
+          - { target: linux-arm64, os: ubuntu-24.04-arm, image: 'alpine:3.22' }
+          - { target: windows-x64, os: ubuntu-24.04, image: 'debian:trixie' }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install nasm meson ninja pkgconf
+          ffmpeg/build.sh ${{ matrix.target }} out
+
+      - name: Build (container)
+        if: matrix.image
+        run: |
+          docker run --rm -v "$PWD:/w" -w /w ${{ matrix.image }} \
+            sh -c 'sh ffmpeg/install-deps.sh && bash ffmpeg/build.sh ${{ matrix.target }} out'
+
+      # 能在这台机器上跑的就试跑一遍（macos-x64 要 Rosetta，windows-x64 是交叉编译，跳过）
+      - name: Smoke test
+        if: matrix.target == 'macos-arm64' || matrix.target == 'linux-x64' || matrix.target == 'linux-arm64'
+        run: |
+          mkdir smoke && cd smoke && unzip -q ../out/ffmpeg-${{ matrix.target }}.zip
+          ./ffmpeg -hide_banner -version
+          ./ffmpeg -hide_banner -filters | grep -q ' lutyuv '
+          ./ffmpeg -hide_banner -decoders | grep -q ' libdav1d '
+          if [ "$RUNNER_OS" = Linux ]; then file ffmpeg | grep -q 'statically linked'; fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ffmpeg-${{ matrix.target }}
+          path: out/ffmpeg-${{ matrix.target }}.zip
+          if-no-files-found: error
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/ffmpeg-')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+
+      - name: Check the tag matches build.sh
+        run: |
+          version=$(sed -n 's/^FFMPEG_VERSION=//p' ffmpeg/build.sh)
+          case "$GITHUB_REF_NAME" in
+            "ffmpeg-$version-"[0-9]*) ;;
+            *) echo "标签 $GITHUB_REF_NAME 和 build.sh 里的 ffmpeg $version 对不上"; exit 1 ;;
+          esac
+
+      # LGPL 要求提供源码：源码包和二进制放在同一个 Release 里
+      - name: Sources
+        run: bash ffmpeg/build.sh sources out
+
+      - name: Manifest
+        working-directory: out
+        run: |
+          {
+            echo "# 插件自动下载的 ffmpeg（ffmpeg/build.sh 编的精简版）。由 .github/workflows/ffmpeg.yml 生成，"
+            echo "# 用 ffmpeg/update-manifest.sh 拷进来，不要手改。每行：平台=文件名 字节数 sha256"
+            echo "version=${GITHUB_REF_NAME#ffmpeg-}"
+            echo "url=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/"
+            for f in ffmpeg-*.zip; do
+              target=${f#ffmpeg-}
+              echo "${target%.zip}=$f $(stat -c %s "$f") $(sha256sum "$f" | cut -d' ' -f1)"
+            done
+          } > downloads.properties
+          sha256sum ffmpeg-*.zip *.tar.xz > SHA256SUMS
+          cat downloads.properties SHA256SUMS
+
+      - name: Release
+        working-directory: out
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" ffmpeg-*.zip *.tar.xz SHA256SUMS downloads.properties \
+            --repo "$GITHUB_REPOSITORY" --latest=false \
+            --title "ffmpeg ${GITHUB_REF_NAME#ffmpeg-} for Live Background" \
+            --notes "A minimal, decode-only, LGPL build of ffmpeg that the plugin downloads when ffmpeg is not installed. Built by ffmpeg/build.sh; sources are attached."

@@ -80,4 +80,14 @@ class MediaFilesTest {
         // 图片原画、不模糊不压暗：一个滤镜都没有，不能留一个空的 -vf
         assertFalse("-vf" in cmd(0, 0, big, big))
     }
+
+    @Test
+    fun `dim scales rgb without the gpl-only eq filter`() {
+        val size = VideoProbe.Size(1280, 720)
+        val cmd = FfmpegFrameSource(FfmpegConfig(Path.of("ffmpeg"), Path.of("bg.mp4"), false, 24, 0, 15, 0, false))
+            .command(size, size)
+        val filters = cmd[cmd.indexOf("-vf") + 1]
+        assertTrue(filters, "lutyuv=y=minval+(val-minval)*0.850:u=(minval+maxval)/2+(val-(minval+maxval)/2)*0.850:v=" in filters)
+        assertFalse(filters, "eq=" in filters)
+    }
 }

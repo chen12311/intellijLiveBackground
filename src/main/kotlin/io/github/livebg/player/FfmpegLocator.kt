@@ -7,8 +7,8 @@ import java.nio.file.InvalidPathException
 import java.nio.file.Path
 
 /**
- * 三层兜底：设置里填的路径 → PATH → 常见安装位置。
- * mac 上从程序坞启动 IDE 时，PATH 里不一定有 /opt/homebrew/bin，所以第三层不能省。
+ * 设置里填的路径 → PATH → 常见安装位置 → 插件自己下载的（[FfmpegDownload]）。
+ * mac 上从程序坞启动 IDE 时，PATH 里不一定有 /opt/homebrew/bin，所以常见安装位置不能省。
  */
 object FfmpegLocator {
 
@@ -20,7 +20,7 @@ object FfmpegLocator {
         val exe = if (SystemInfo.isWindows) "ffmpeg.exe" else "ffmpeg"
         PathEnvironmentVariableUtil.findInPath(exe)?.toPath()?.let { if (isExecutable(it)) return it }
 
-        return candidates().mapNotNull(::toPath).firstOrNull(::isExecutable)
+        return candidates().mapNotNull(::toPath).firstOrNull(::isExecutable) ?: FfmpegDownload.installed()
     }
 
     private fun candidates(): List<String> = when {

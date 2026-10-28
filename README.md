@@ -28,14 +28,18 @@ PyCharm, GoLand, and so on.
 - A JetBrains IDE, version 2025.1 or newer
 - [ffmpeg](https://ffmpeg.org/) for video and image backgrounds (web wallpapers don't need it)
 
+  You don't have to install it yourself. If no ffmpeg is found when you pick a video, the plugin offers to download a
+  minimal build made for it (a few MB, decoding only, LGPL), verifies its checksum and uses it. There is also a
+  download button in the settings. The download is shared by all JetBrains IDEs. To use your own ffmpeg instead:
+
   ```bash
   brew install ffmpeg          # macOS
   winget install ffmpeg        # Windows
   sudo apt install ffmpeg      # Debian / Ubuntu
   ```
 
-  The plugin finds ffmpeg on `PATH` and in common install locations (Homebrew, MacPorts, WinGet, Scoop). You can also
-  set the path in the settings.
+  The plugin looks for ffmpeg in the path set in the settings, then on `PATH`, then in common install locations
+  (Homebrew, MacPorts, WinGet, Scoop), and finally uses the downloaded one.
 
 > Developed and tested on macOS. Windows and Linux are supported by the code but not tested yet.
 
@@ -187,3 +191,15 @@ src/main/kotlin/io/github/livebg/
 ```
 
 UI strings are in `src/main/resources/messages/LiveBgBundle*.properties` (English is the default, `_zh` is Chinese).
+
+### The downloadable ffmpeg
+
+`ffmpeg/build.sh` builds the minimal ffmpeg the plugin downloads: only the demuxers, decoders and filters the plugin
+uses, plus dav1d for AV1, statically linked and LGPL. `.github/workflows/ffmpeg.yml` builds it for macOS (arm64, x64),
+Linux (x64, arm64) and Windows (x64). To publish a new build:
+
+1. Update the versions in `ffmpeg/build.sh` if needed, then push a tag such as `ffmpeg-9.0.2-1` (ffmpeg version plus
+   a build number). The workflow creates a GitHub release with the zips, the sources and `downloads.properties`.
+2. Run `ffmpeg/update-manifest.sh ffmpeg-9.0.2-1` to copy the URLs and SHA-256 checksums into
+   `src/main/resources/ffmpeg/downloads.properties`, and commit it. Without that file the plugin does not offer the
+   download.

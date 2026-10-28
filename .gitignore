@@ -5,3 +5,6 @@ build/
 .idea/
 *.iml
 out/
+
+# ffmpeg/build.sh 的下载和编译目录
+ffmpeg/work/

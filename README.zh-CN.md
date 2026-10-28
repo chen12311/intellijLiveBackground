@@ -21,13 +21,16 @@
 - JetBrains IDE 2025.1 或更新版本
 - [ffmpeg](https://ffmpeg.org/)：播放视频和图片需要（网页壁纸不需要）
 
+  不用自己装。选了视频却找不到 ffmpeg 时，插件会提示下载它专用的精简版（几 MB，只能解码，LGPL 授权），核对校验值后直接用；
+  设置页里也有下载按钮。下载的这份所有 JetBrains IDE 共用。想用自己装的 ffmpeg：
+
   ```bash
   brew install ffmpeg          # macOS
   winget install ffmpeg        # Windows
   sudo apt install ffmpeg      # Debian / Ubuntu
   ```
 
-  插件会在 `PATH` 和常见安装位置（Homebrew、MacPorts、WinGet、Scoop）里找 ffmpeg，也可以在设置里手动指定路径。
+  查找顺序：设置里填的路径 → `PATH` → 常见安装位置（Homebrew、MacPorts、WinGet、Scoop）→ 插件下载的那份。
 
 > 在 macOS 上开发和测试。代码支持 Windows 和 Linux，但还没有实测过。
 
@@ -158,3 +161,13 @@ src/main/kotlin/io/github/livebg/
 ```
 
 界面文字在 `src/main/resources/messages/LiveBgBundle*.properties`（默认英文，`_zh` 是中文）。
+
+### 供下载的 ffmpeg
+
+`ffmpeg/build.sh` 编译插件下载用的精简版 ffmpeg：只带插件用得到的解封装器、解码器和滤镜，AV1 用 dav1d，静态链接，LGPL。
+`.github/workflows/ffmpeg.yml` 编 macOS（arm64、x64）、Linux（x64、arm64）、Windows（x64）五个版本。发布新版本：
+
+1. 需要的话先改 `ffmpeg/build.sh` 里的版本号，然后推一个标签，比如 `ffmpeg-9.0.2-1`（ffmpeg 版本加第几次编译）。
+   工作流会建一个 GitHub Release，里面有各平台的 zip、源码包和 `downloads.properties`。
+2. 运行 `ffmpeg/update-manifest.sh ffmpeg-9.0.2-1`，把下载地址和 SHA-256 拷进 `src/main/resources/ffmpeg/downloads.properties`，
+   提交。没有这个文件，插件就不会提示下载。
