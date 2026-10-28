@@ -50,6 +50,19 @@ class FfmpegDownloadTest {
     }
 
     @Test
+    fun `bundled manifest covers every platform`() {
+        val text = javaClass.getResourceAsStream("/ffmpeg/downloads.properties")!!.use { String(it.readAllBytes(), Charsets.UTF_8) }
+        // ffmpeg/build.sh 的 target
+        for (target in listOf("macos-arm64", "macos-x64", "linux-x64", "linux-arm64", "windows-x64")) {
+            val asset = FfmpegDownload.parse(text, target)
+            assertNotNull(target, asset)
+            assertTrue(asset!!.url, asset.url.endsWith("/ffmpeg-${asset.version}/ffmpeg-$target.zip"))
+            assertEquals(target, 64, asset.sha256.length)
+        }
+        assertNotNull("这台机器能下载", FfmpegDownload.asset)
+    }
+
+    @Test
     fun `installs into a folder named after the version`() {
         assumeFalse(SystemInfo.isWindows) // 拿 shell 脚本冒充 ffmpeg
         val zip = zipWith("#!/bin/sh\necho ffmpeg version test\n")
