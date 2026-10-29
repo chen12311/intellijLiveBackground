@@ -174,7 +174,8 @@ Open the project in IntelliJ IDEA and wait for the Gradle sync, or use the comma
 | `./gradlew runIde` | Start a sandbox PhpStorm 2025.1.7 (the minimum supported version) with the plugin |
 | `./gradlew runPhpStorm` | Start a sandbox using `/Applications/PhpStorm.app` if present, otherwise PhpStorm 2026.2.3 |
 | `./gradlew test` | Run the unit tests (the decoding tests run only when ffmpeg is installed) |
-| `./gradlew verifyPlugin` | Check compatibility with the minimum and the local IDE version |
+| `./gradlew verifyPlugin` | Check compatibility with the minimum and the local IDE version; add `-PverifyAll` to check every version from 2025.1 to the latest EAP (downloads several IDEs) |
+| `./gradlew publishPlugin` | Upload to JetBrains Marketplace, with a token from *My Tokens* in `PUBLISH_TOKEN` (the first version must be uploaded on the website) |
 
 The versions used above are set in `gradle.properties`.
 
@@ -203,3 +204,8 @@ Linux (x64, arm64) and Windows (x64). To publish a new build:
 2. Run `ffmpeg/update-manifest.sh ffmpeg-9.0.2-1` to copy the URLs and SHA-256 checksums into
    `src/main/resources/ffmpeg/downloads.properties`, and commit it. Without that file the plugin does not offer the
    download.
+
+## License
+
+MIT, see [LICENSE](LICENSE). The ffmpeg build the plugin downloads is licensed under the LGPL 2.1 or later; its
+sources are attached to each `ffmpeg-*` release.

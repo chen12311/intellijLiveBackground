@@ -39,10 +39,19 @@ intellijPlatform {
     }
     pluginVerification {
         ides {
-            // 平时：最低版本 + 本机最新版。P3 上架前换成 recommended()，把 2025.1 到最新 EAP 全跑一遍
-            create(IntelliJPlatformType.PhpStorm, providers.gradleProperty("platformVersion"))
-            if (localPhpStorm != null && localPhpStorm.exists()) local(localPhpStorm)
+            // 发布前加 -PverifyAll，把 2025.1 到最新 EAP 全跑一遍（要下载好几个 IDE）；平时只跑最低版本 + 本机最新版
+            if (providers.gradleProperty("verifyAll").isPresent) {
+                recommended()
+            } else {
+                create(IntelliJPlatformType.PhpStorm, providers.gradleProperty("platformVersion"))
+                if (localPhpStorm != null && localPhpStorm.exists()) local(localPhpStorm)
+            }
         }
+    }
+    // ./gradlew publishPlugin 发到 JetBrains Marketplace；token 在 Marketplace 个人页的 My Tokens 里生成。
+    // 第一个版本要在网页上手动上传
+    publishing {
+        token = providers.environmentVariable("PUBLISH_TOKEN")
     }
 }
 

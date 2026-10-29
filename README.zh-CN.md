@@ -144,7 +144,8 @@ Wallpaper Engine 的视频类壁纸在 Windows 的 `Steam\steamapps\workshop\con
 | `./gradlew runIde` | 用 PhpStorm 2025.1.7（最低支持版本）启动一个装好插件的沙箱 |
 | `./gradlew runPhpStorm` | 有 `/Applications/PhpStorm.app` 就用它启动沙箱，没有就下载 PhpStorm 2026.2.3 |
 | `./gradlew test` | 运行单元测试（装了 ffmpeg 才会跑真实解码的测试） |
-| `./gradlew verifyPlugin` | 检查和最低版本、本机 IDE 版本的兼容性 |
+| `./gradlew verifyPlugin` | 检查和最低版本、本机 IDE 版本的兼容性；加 `-PverifyAll` 把 2025.1 到最新 EAP 全查一遍（要下载好几个 IDE） |
+| `./gradlew publishPlugin` | 发布到 JetBrains Marketplace，token（在 Marketplace 个人页的 *My Tokens* 里生成）放在环境变量 `PUBLISH_TOKEN` 里；第一个版本要在网页上手动上传 |
 
 上面用到的版本号在 `gradle.properties` 里配置。
 
@@ -171,3 +172,7 @@ src/main/kotlin/io/github/livebg/
    工作流会建一个 GitHub Release，里面有各平台的 zip、源码包和 `downloads.properties`。
 2. 运行 `ffmpeg/update-manifest.sh ffmpeg-9.0.2-1`，把下载地址和 SHA-256 拷进 `src/main/resources/ffmpeg/downloads.properties`，
    提交。没有这个文件，插件就不会提示下载。
+
+## 许可证
+
+MIT，见 [LICENSE](LICENSE)。插件下载的 ffmpeg 是 LGPL 2.1 或更高版本，源码附在每个 `ffmpeg-*` Release 里。
