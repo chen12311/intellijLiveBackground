@@ -1,6 +1,7 @@
 package io.github.livebg.render
 
 import com.intellij.ide.util.PropertiesComponent
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.wm.impl.IdeBackgroundUtil
@@ -35,7 +36,8 @@ object PlaceholderBackground {
             }
             !enable && ours -> {
                 props.unsetValue(IdeBackgroundUtil.EDITOR_PROP)
-                IdeBackgroundUtil.repaintAllWindows()
+                // IDE 退出时服务在应用销毁中才 dispose，消息总线已经没了，发设置变更通知会报错；也没有窗口要重画
+                if (!ApplicationManager.getApplication().isDisposed) IdeBackgroundUtil.repaintAllWindows()
             }
         }
     }
