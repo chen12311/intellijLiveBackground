@@ -17,8 +17,7 @@ PyCharm, GoLand, and so on.
 - **Folder rotation** — play the videos and images in a folder in turn, in order or shuffled, on a timer or manually.
 - **Web wallpapers (experimental)** — render Wallpaper Engine wallpapers of type *web* with the IDE's built-in
   Chromium.
-- **Readable code** — opacity, blur and dim controls, plus an option to keep selection and search-highlight colors
-  clear.
+- **Readable code** — opacity, blur and dim controls.
 - **Light on resources** — frames are decoded by a local `ffmpeg` process and kept in memory only (nothing is written
   to disk), uploaded to the GPU once per frame, and playback pauses when the IDE loses focus or enters power save mode.
 - English and Chinese UI, following the IDE language.
@@ -112,7 +111,6 @@ the language.
 | Dim | 15% | Darkens the background to keep text readable |
 | Decode resolution | 1280 | Limit for the longer side, from 960 up to 4K, or *Original*. Smaller videos are never upscaled |
 | Auto pause | On | Pause when the IDE loses focus and in power save mode |
-| Protect selection and highlight colors | Off | Keeps selections and search highlights clearly visible (experimental) |
 | ffmpeg path | Auto | Leave empty to detect automatically |
 | Hardware decoding | On | macOS VideoToolbox |
 

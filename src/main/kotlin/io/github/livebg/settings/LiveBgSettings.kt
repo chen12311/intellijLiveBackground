@@ -81,7 +81,6 @@ class LiveBgSettings : PersistentStateComponent<LiveBgSettings.State> {
 
         var pauseWhenInactive = true
         var pauseInPowerSave = true
-        var protectSelection = false
 
         var ffmpegPath = ""
         var hwaccel = true

@@ -118,13 +118,6 @@ class LiveBgConfigurable : BoundConfigurable("Live Background") {
                 }
             }
 
-            group(message("settings.experimental")) {
-                row {
-                    checkBox(message("settings.protectSelection")).bindSelected(st::protectSelection)
-                        .comment(message("settings.protectSelection.comment"))
-                }
-            }
-
             group("ffmpeg") {
                 row(message("settings.ffmpeg.path")) {
                     textFieldWithBrowseButton(

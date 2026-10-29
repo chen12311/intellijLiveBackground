@@ -13,8 +13,7 @@
       on a timer or with a shortcut.</li>
   <li><b>Web wallpapers (experimental)</b>: Wallpaper Engine wallpapers of type <i>web</i>,
       rendered with the IDE's built-in Chromium (JCEF).</li>
-  <li><b>Readable code</b>: opacity, blur and dim controls, and an option to keep selection and search
-      highlights clear.</li>
+  <li><b>Readable code</b>: opacity, blur and dim controls.</li>
   <li><b>Light on resources</b>: frames are decoded by a local ffmpeg process and kept in memory only,
       and playback pauses when the IDE loses focus or enters power save mode.</li>
 </ul>

@@ -1,7 +1,6 @@
 package io.github.livebg.render
 
 import com.intellij.openapi.ui.AbstractPainter
-import com.intellij.openapi.wm.impl.IdeBackgroundUtil
 import io.github.livebg.player.FramePlayer
 import io.github.livebg.player.Stats
 import io.github.livebg.settings.LiveBgSettings
@@ -39,17 +38,11 @@ class VideoPainter(
         val origin = if (root === component) Point() else SwingUtilities.convertPoint(component, 0, 0, root)
         val dest = st.fill.place(frame.width, frame.height, root.width, root.height)
 
-        var alpha = st.opacity.coerceIn(0, 100) / 100f
-        // 标记现在总是有（见 PlaceholderBackground），用户开了保护才压低
-        if (st.protectSelection && PRESERVED_HINT != null && g.getRenderingHint(PRESERVED_HINT) == true) {
-            alpha *= PRESERVED_ALPHA_FACTOR
-        }
-
         val image = texture.imageFor(g.deviceConfiguration, frame, player.frameSerial)
         val g2 = g.create() as Graphics2D
         try {
             if (coverBelow) g2.clipBounds?.let(g2::fill)
-            g2.composite = AlphaComposite.SrcOver.derive(alpha)
+            g2.composite = AlphaComposite.SrcOver.derive(st.opacity.coerceIn(0, 100) / 100f)
             // 只对显卡副本开双线性；原帧带双线性画到显卡表面上就是坑 4 那条软件路径
             if (image !== frame) g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
             g2.drawImage(image, dest.x - origin.x, dest.y - origin.y, dest.width, dest.height, null)
@@ -57,25 +50,5 @@ class VideoPainter(
             g2.dispose()
         }
         Stats.painted(System.nanoTime() - start)
-    }
-
-    private companion object {
-        /** 自带背景对选区、高亮等颜色用 0.65 倍；视频会动，更干扰阅读，压得更低一些。 */
-        const val PRESERVED_ALPHA_FACTOR = 0.3f
-
-        /**
-         * 平台在填“要保留的颜色”（选区、搜索高亮…）时会打上这个标记。
-         * 2025.1 里这个字段是包内可见的，2026.2 是 public 但标着 @Internal，所以用反射读；
-         * 读不到（以后改名了）就当没有，不影响播放。
-         */
-        val PRESERVED_HINT: RenderingHints.Key? = try {
-            IdeBackgroundUtil::class.java.getDeclaredField("ADJUST_ALPHA")
-                .apply { isAccessible = true }
-                .get(null) as? RenderingHints.Key
-        } catch (_: ReflectiveOperationException) {
-            null
-        } catch (_: RuntimeException) { // InaccessibleObjectException / SecurityException
-            null
-        }
     }
 }
