@@ -119,6 +119,11 @@ the language.
 **Tip — sharper picture:** on a Retina display covering the whole window, the window is over 3000 pixels wide. Set
 the decode resolution to 2K or 4K (if the video itself is that large) and the blur radius to 0.
 
+**About the IDE's own background image:** while Live Background is on and no background image is set under
+**Appearance | Background Image**, the plugin sets a transparent 1×1 image there and removes it when you turn the
+plugin off. Without it, the Islands themes paint their per-project color gradient and hide the video inside the
+panels. So the gradient isn't shown while the plugin is on, the same as with any background image.
+
 ### Folder rotation
 
 Choose **Folder (rotation)** as the source, or use **Choose Folder to Rotate…** in the menu.

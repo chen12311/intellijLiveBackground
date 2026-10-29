@@ -25,7 +25,7 @@ import io.github.livebg.player.FrameSource
 import io.github.livebg.player.MediaFiles
 import io.github.livebg.player.Stats
 import io.github.livebg.render.BackgroundInstaller
-import io.github.livebg.render.SelectionProtection
+import io.github.livebg.render.PlaceholderBackground
 import io.github.livebg.settings.LiveBgSettings
 import io.github.livebg.settings.Scope
 import io.github.livebg.settings.SourceKind
@@ -91,7 +91,7 @@ class LiveBgService : Disposable {
     fun reload() {
         if (!started) return ensureStarted()
         val st = settings
-        SelectionProtection.update(st.enabled && st.protectSelection)
+        PlaceholderBackground.update(st.enabled)
         if (!st.enabled) {
             stopPlayback()
             installer.uninstallAll()
@@ -171,7 +171,7 @@ class LiveBgService : Disposable {
         carousel.setRunning(false)
         player.stop()
         installer.uninstallAll()
-        SelectionProtection.update(false)
+        PlaceholderBackground.update(false)
     }
 
     private fun sourceKey(): List<Any> {

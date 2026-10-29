@@ -40,7 +40,10 @@ class VideoPainter(
         val dest = st.fill.place(frame.width, frame.height, root.width, root.height)
 
         var alpha = st.opacity.coerceIn(0, 100) / 100f
-        if (PRESERVED_HINT != null && g.getRenderingHint(PRESERVED_HINT) == true) alpha *= PRESERVED_ALPHA_FACTOR
+        // 标记现在总是有（见 PlaceholderBackground），用户开了保护才压低
+        if (st.protectSelection && PRESERVED_HINT != null && g.getRenderingHint(PRESERVED_HINT) == true) {
+            alpha *= PRESERVED_ALPHA_FACTOR
+        }
 
         val image = texture.imageFor(g.deviceConfiguration, frame, player.frameSerial)
         val g2 = g.create() as Graphics2D
