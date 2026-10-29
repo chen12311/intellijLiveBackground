@@ -32,9 +32,16 @@ IDE 失去焦点时自动暂停。没装 ffmpeg 时，可以一键下载插件�
 ]]></description>
 
     <change-notes><![CDATA[
-<p>First release.</p>
+<p>0.1.1</p>
 <ul>
-  <li>Video and image backgrounds for the whole window or the editors only.</li>
+  <li>Fixed: on the Islands themes, when no background image was set, the video only showed in the gaps
+      between the panels. While the plugin is on, it now sets a transparent 1×1 image under
+      <b>Appearance | Background Image</b> (removed again when you turn the plugin off).</li>
+  <li>Removed the experimental "Protect selection and highlight colors" option.</li>
+</ul>
+<p>0.1.0</p>
+<ul>
+  <li>First release: video and image backgrounds for the whole window or the editors only.</li>
   <li>Folder rotation with timer, shuffle and shortcuts.</li>
   <li>Wallpaper Engine web wallpapers (experimental).</li>
   <li>One-click download of a minimal ffmpeg when none is installed.</li>
