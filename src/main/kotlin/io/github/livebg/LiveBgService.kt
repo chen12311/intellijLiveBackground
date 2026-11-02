@@ -43,7 +43,7 @@ import java.util.Locale
 @Service(Service.Level.APP)
 class LiveBgService : Disposable {
 
-    private val player: FramePlayer = FramePlayer(onFrame = { installer.onFrame() }, hasViewers = { installer.anyShowing() })
+    private val player: FramePlayer = FramePlayer(onFrame = { installer.onFrame() }, hasViewers = { installer.anyLive() })
     private val installer: BackgroundInstaller = BackgroundInstaller(this, player)
     private val carousel = Carousel(onSwitch = ::onCarouselSwitch)
 

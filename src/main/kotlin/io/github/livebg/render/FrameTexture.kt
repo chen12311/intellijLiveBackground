@@ -8,7 +8,7 @@ import java.awt.image.BufferedImage
 import java.awt.image.VolatileImage
 
 /**
- * 当前帧在显卡上的副本，所有编辑器的画笔共用。只在 EDT 上用。
+ * 一帧在显卡上的副本：当前帧一份，前台窗口的画笔共用；每个定格的后台窗口各一份（见 [WindowFrames]）。只在 EDT 上用。
  *
  * 坑 4：刚改写过的 BufferedImage 带双线性缩放直接画到 Metal 表面上，会退回软件路径——
  * 实测每次约 250 ms、分配约 135 MB，一秒两三次就把 EDT 占满，堆也跟着狂涨。

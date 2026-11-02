@@ -20,6 +20,7 @@ PyCharm, GoLand, and so on.
 - **Readable code** — opacity, blur and dim controls.
 - **Light on resources** — frames are decoded by a local `ffmpeg` process and kept in memory only (nothing is written
   to disk), uploaded to the GPU once per frame, and playback pauses when the IDE loses focus or enters power save mode.
+  With several project windows open, only the focused one plays; the others hold their last frame.
 - English and Chinese UI, following the IDE language.
 
 ## Requirements
