@@ -32,6 +32,13 @@ IDE 失去焦点时自动暂停。没装 ffmpeg 时，可以一键下载插件�
 ]]></description>
 
     <change-notes><![CDATA[
+<p>0.1.2</p>
+<ul>
+  <li>Fixed: with several project windows open, the editor became sluggish because every window was repainted
+      on every video frame, even hidden ones. Now only the focused window plays; the others hold their last
+      frame until you switch to them.</li>
+  <li>Lower painting overhead with many open editors.</li>
+</ul>
 <p>0.1.1</p>
 <ul>
   <li>Fixed: on the Islands themes, when no background image was set, the video only showed in the gaps
